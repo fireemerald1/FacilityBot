@@ -7,8 +7,11 @@ Send System – private prefix command to send messages as the bot.
 """
 
 import logging
+import re
 import discord
 from discord.ext import commands
+
+from config import CUBE_EMOJIS
 
 log = logging.getLogger("facility.send")
 
@@ -35,6 +38,15 @@ class SendCog(commands.Cog, name="Send"):
         # Check if the user is allowed (silently fail if not)
         if ctx.author.id not in ALLOWED_USER_IDS:
             return
+
+        # Replace [X] at the start of the message with the corresponding cube emoji
+        match = re.match(r"^\[(\d+)\]\s*", message)
+        if match:
+            cube_id = int(match.group(1))
+            if 1 <= cube_id <= len(CUBE_EMOJIS):
+                cube_emoji = CUBE_EMOJIS[cube_id - 1]
+                message = message[match.end():]  # remove the [X] part
+                message = f"{cube_emoji} {message}"
 
         try:
             await channel.send(message)
