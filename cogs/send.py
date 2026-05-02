@@ -24,6 +24,8 @@ class SendCog(commands.Cog, name="Send"):
         self.bot = bot
 
     @app_commands.command(name="send", description="Send a message to a channel as the bot.")
+    @app_commands.allowed_installs(guilds=False, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     @app_commands.describe(
         channel="The channel to send the message to.",
         message="The message content to send.",

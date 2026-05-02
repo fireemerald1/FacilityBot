@@ -45,6 +45,8 @@ EXTENSIONS = [
     "cogs.gatherer",
     "cogs.roles",
     "cogs.testmode",
+    "cogs.send",
+    "cogs.admin",
 ]
 
 
