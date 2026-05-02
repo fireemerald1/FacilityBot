@@ -64,3 +64,26 @@ OUTAGE_MESSAGES = [
     "The process has resumed after interruption.",
     "All functions are active following downtime."
 ]
+
+SHIFT_END_MESSAGES = [
+    "All test chambers have been sealed. The icons rest now — those that survived, at least.",
+    "The facility grows quiet. The recycled material will be ready for tomorrow's production.",
+    "Energy output has stabilized to idle. The facility enters low-power state.",
+    "All sectors are clear. No incidents today. Rest well, everyone.",
+    "Another cycle ends. The icons that fell have been processed. New ones will take their place.",
+    "The test chambers go dark. Somewhere, a corpse is being remade into something new.",
+    "Shift complete. The connection to Robtop remains stable. Operations resume next cycle.",
+    "The void is patient. The facility sleeps, but never stops. Return when called.",
+    "All reports have been submitted. The data will shape tomorrow's chambers.",
+    "The recycling process has concluded. From the fallen, new icons are born.",
+    "Every icon tested today carries the weight of those before it. Shift sealed.",
+    "Chambers locked. You've all earned your rest. The facility remembers your service.",
+    "The last test subject has been logged. All personnel, you are dismissed.",
+    "From cube to ship, from wave to beyond — today's trials are archived. Rest now.",
+    "All personnel, return to your quarters. The facility will call when it needs you again.",
+    "Another day in the facility. Another cycle since before the first icon was ever made.",
+    "The shift has ended. The facility stands still, but it never truly sleeps.",
+    "All operations concluded. The energy dims, but the void keeps watch.",
+    "Today's work is done. The icons that remain are stronger for it. Dismissed.",
+    "The facility thanks you. Rest — tomorrow, the chambers open again.",
+]

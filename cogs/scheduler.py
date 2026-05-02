@@ -29,6 +29,7 @@ from config import (
     LATE_THRESHOLD_MINUTES,
     SCHEDULE_CHECK_INTERVAL_S,
     OUTAGE_MESSAGES,
+    SHIFT_END_MESSAGES,
 )
 from utils.schedule import (
     is_within_active_window,
@@ -228,8 +229,26 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
                 loop.cancel()
                 log.info("Stopped %s loop.", cog_name)
 
+        # Send shift-end message to general-staff and media before unlocking
+        await self._send_shift_end_message()
+
         # Unlock general-staff and media
         await self._unlock_channels()
+
+    # ── Shift-end announcement ────────────────────────────────────────
+
+    async def _send_shift_end_message(self) -> None:
+        """Send a lore-themed end-of-shift message to general-staff and media."""
+        message_text = random.choice(SHIFT_END_MESSAGES)
+        for ch_id in (CHANNEL_GENERAL_STAFF, CHANNEL_MEDIA):
+            channel = self.bot.get_channel(ch_id)
+            if channel is None:
+                continue
+            try:
+                await channel.send(message_text)
+                log.info("Sent shift-end message to %s.", channel.name)
+            except Exception as exc:
+                log.warning("Failed to send shift-end message to %s: %s", ch_id, exc)
 
     # ── New-week button cleanup ──────────────────────────────────────
 
