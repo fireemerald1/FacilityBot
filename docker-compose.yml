@@ -1,0 +1,10 @@
+services:
+  bot:
+    build: .
+    container_name: facility-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Persist JSON state files across container restarts
+      - ./data:/app/data
