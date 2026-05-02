@@ -43,6 +43,7 @@ EXTENSIONS = [
     "cogs.builder",
     "cogs.tester",
     "cogs.gatherer",
+    "cogs.roles",
     "cogs.testmode",
 ]
 

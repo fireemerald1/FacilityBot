@@ -45,18 +45,18 @@ class TesterView(discord.ui.View):
     ):
         if not is_tester(interaction.user):
             await interaction.response.send_message(
-                "❌ You must have the **Tester** role to interact.",
+                "Access denied. Tester clearance required.",
                 ephemeral=True,
             )
             return
 
         embed = discord.Embed(
-            title="✅ Code Verified",
+            title="Code Verified",
             description=(
-                f"**Verified by:** {interaction.user.display_name}\n"
-                f"**Slot:** `{self.slot_key}`"
+                f"Verified by: {interaction.user.display_name}\n"
+                f"Slot: `{self.slot_key}`"
             ),
-            color=discord.Color.green(),
+            color=discord.Color.dark_green(),
         )
         for child in self.children:
             child.disabled = True
@@ -73,18 +73,18 @@ class TesterView(discord.ui.View):
     ):
         if not is_tester(interaction.user):
             await interaction.response.send_message(
-                "❌ You must have the **Tester** role to interact.",
+                "Access denied. Tester clearance required.",
                 ephemeral=True,
             )
             return
 
         embed = discord.Embed(
-            title="🚩 Code Flagged",
+            title="Code Flagged",
             description=(
-                f"**Flagged by:** {interaction.user.display_name}\n"
-                f"**Slot:** `{self.slot_key}`"
+                f"Flagged by: {interaction.user.display_name}\n"
+                f"Slot: `{self.slot_key}`"
             ),
-            color=discord.Color.red(),
+            color=discord.Color.dark_red(),
         )
         for child in self.children:
             child.disabled = True
@@ -150,14 +150,14 @@ class TesterCog(commands.Cog, name="Tester"):
             mutated = mutate_code(original)
 
             embed = discord.Embed(
-                title="🧪 Test Chamber Code",
+                title="<a:TestBall:1500108363395104769> Test Chamber Code",
                 description=(
                     f"```\n{original}\n```\n"
                     f"```\n{mutated}\n```"
                 ),
-                color=discord.Color.gold(),
+                color=discord.Color.dark_grey(),
             )
-            embed.set_footer(text=f"Slot: {slot_key} • Testers: Verify or Flag.")
+            embed.set_footer(text=f"Slot: {slot_key} — Awaiting tester input.")
 
             view = TesterView(
                 slot_key=slot_key,

@@ -24,6 +24,9 @@ def has_role(member: discord.Member, role_id: int) -> bool:
 def is_owner(member: discord.Member) -> bool:
     return has_role(member, ROLE_OWNER)
 
+def is_boss(member: discord.Member) -> bool:
+    return has_role(member, ROLE_OWNER)
+
 def is_builder(member: discord.Member) -> bool:
     return has_role(member, ROLE_BUILDER)
 

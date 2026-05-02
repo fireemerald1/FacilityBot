@@ -26,6 +26,31 @@ MUTATION_CHANCE     = 0.10       # 10% chance to mutate a char in tester
 GATHERER_INTERVAL_H = 3          # Hours between gatherer embeds
 BUILDER_CHECK_INTERVAL_S = 30    # Seconds between builder top-up checks
 TESTER_CHECK_INTERVAL_S  = 30    # Seconds between tester top-up checks
+ROLE_PICK_COOLDOWN_DAYS  = 14    # Days before a role change is allowed
+
+# ─── Cube Emojis (Gatherer subjects) ─────────────────────────────────
+CUBE_EMOJIS = [
+    "<:cube_1:1500106727973191780>",
+    "<:cube_2:1500106725909467257>",
+    "<:cube_3:1500106724093464656>",
+    "<:cube_4:1500106722487046414>",
+    "<:cube_5:1500106720796741672>",
+    "<:cube_6:1500106719001444493>",
+    "<:cube_7:1500106717239705780>",
+    "<:cube_8:1500106715230634134>",
+    "<:cube_9:1500106712798072892>",
+    "<:cube_10:1500106710243606750>",
+    "<:cube_11:1500106708297580615>",
+    "<:cube_12:1500106706796155021>",
+    "<:cube_13:1500106704732553397>",
+    "<:cube_14:1500106703100710932>",
+    "<:cube_15:1500106701511332000>",
+    "<:cube_16:1500106699820892280>",
+    "<:cube_17:1500106697954431046>",
+    "<:cube_18:1500106696142622851>",
+    "<:cube_19:1500106693764186243>",
+    "<:cube_20:1500106691079966811>",
+]
 
 # ─── Storage ─────────────────────────────────────────────────────────
 import os as _os
@@ -34,6 +59,7 @@ _os.makedirs(_DATA_DIR, exist_ok=True)
 
 CHAMBER_FILE = _os.path.join(_DATA_DIR, "test-chamber.json")
 SCHEDULE_FILE = _os.path.join(_DATA_DIR, "schedule-state.json")
+PICK_FILE = _os.path.join(_DATA_DIR, "role-picks.json")
 
 # ─── Schedule ────────────────────────────────────────────────────────
 ACTIVE_DAYS = {5, 6}               # Saturday=5, Sunday=6 (weekday())

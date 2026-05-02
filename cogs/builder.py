@@ -41,7 +41,7 @@ class BuilderView(discord.ui.View):
     ):
         if not is_builder(interaction.user):
             await interaction.response.send_message(
-                "❌ You must have the **Builder** role to interact.",
+                "Access denied. Builder clearance required.",
                 ephemeral=True,
             )
             return
@@ -50,10 +50,10 @@ class BuilderView(discord.ui.View):
         embed = discord.Embed(
             title="Code Accepted",
             description=(
-                f"**Accepted by:** {interaction.user.display_name}\n"
-                f"**Full code:** `{self.code}`"
+                f"Processed by: {interaction.user.display_name}\n"
+                f"Code: `{self.code}`"
             ),
-            color=discord.Color.green(),
+            color=discord.Color.dark_green(),
         )
 
         # Disable both buttons
@@ -82,7 +82,7 @@ class BuilderView(discord.ui.View):
     ):
         if not is_builder(interaction.user):
             await interaction.response.send_message(
-                "❌ You must have the **Builder** role to interact.",
+                "Access denied. Builder clearance required.",
                 ephemeral=True,
             )
             return
@@ -90,10 +90,10 @@ class BuilderView(discord.ui.View):
         embed = discord.Embed(
             title="Code Rejected",
             description=(
-                f"**Rejected by:** {interaction.user.display_name}\n"
-                f"**Full code:** `{self.code}`"
+                f"Discarded by: {interaction.user.display_name}\n"
+                f"Code: `{self.code}`"
             ),
-            color=discord.Color.red(),
+            color=discord.Color.dark_red(),
         )
 
         for child in self.children:
@@ -153,11 +153,11 @@ class BuilderCog(commands.Cog, name="Builder"):
         for _ in range(needed):
             code = generate_code()
             embed = discord.Embed(
-                title="🔧 New Code Available",
+                title="<:wrench:1500110842526437386> New Code Generated",
                 description=f"```\n{code}\n```",
-                color=discord.Color.blurple(),
+                color=discord.Color.dark_grey(),
             )
-            embed.set_footer(text="Builders: Accept or Reject this code.")
+            embed.set_footer(text="Awaiting builder input.")
 
             view = BuilderView(code=code, cog=self)
             msg = await channel.send(embed=embed, view=view)

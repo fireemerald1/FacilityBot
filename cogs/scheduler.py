@@ -130,9 +130,9 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
 
         if is_late:
             outage_line = random.choice(OUTAGE_MESSAGES)
-            content = f"{outage_line}\n@here, Get back to work to your assigned roles."
+            content = f"{outage_line}\n@here, return to your assigned stations."
         else:
-            content = "@here, Get back to work to your assigned roles."
+            content = "@here, return to your assigned stations."
 
         await channel.send(content, allowed_mentions=discord.AllowedMentions(everyone=True))
         log.info("Sent %s start alert.", "late" if is_late else "on-time")

@@ -26,6 +26,7 @@ from config import (
     CHANNEL_GATHERER,
     TRAP_CODE,
     OUTAGE_MESSAGES,
+    CUBE_EMOJIS,
 )
 from utils.code_gen import generate_code, mutate_code
 from utils.permissions import is_owner
@@ -72,16 +73,16 @@ class TestBuilderView(discord.ui.View):
     @discord.ui.button(label="Accept", style=discord.ButtonStyle.success)
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not is_owner(interaction.user):
-            await interaction.response.send_message("❌ Test mode: Owner only.", ephemeral=True)
+            await interaction.response.send_message("Access denied. Owner clearance required.", ephemeral=True)
             return
 
         embed = discord.Embed(
             title="Code Accepted",
             description=(
-                f"**Accepted by:** {interaction.user.display_name}\n"
-                f"**Full code:** `{self.code}`"
+                f"Processed by: {interaction.user.display_name}\n"
+                f"Code: `{self.code}`"
             ),
-            color=discord.Color.green(),
+            color=discord.Color.dark_green(),
         )
         # Store in test chamber (memory only)
         if self.code != TRAP_CODE:
@@ -97,16 +98,16 @@ class TestBuilderView(discord.ui.View):
     @discord.ui.button(label="Reject", style=discord.ButtonStyle.danger)
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not is_owner(interaction.user):
-            await interaction.response.send_message("❌ Test mode: Owner only.", ephemeral=True)
+            await interaction.response.send_message("Access denied. Owner clearance required.", ephemeral=True)
             return
 
         embed = discord.Embed(
             title="Code Rejected",
             description=(
-                f"**Rejected by:** {interaction.user.display_name}\n"
-                f"**Full code:** `{self.code}`"
+                f"Discarded by: {interaction.user.display_name}\n"
+                f"Code: `{self.code}`"
             ),
-            color=discord.Color.red(),
+            color=discord.Color.dark_red(),
         )
         for child in self.children:
             child.disabled = True
@@ -123,16 +124,16 @@ class TestTesterView(discord.ui.View):
     @discord.ui.button(label="Verify", style=discord.ButtonStyle.success)
     async def verify(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not is_owner(interaction.user):
-            await interaction.response.send_message("❌ Test mode: Owner only.", ephemeral=True)
+            await interaction.response.send_message("Access denied. Owner clearance required.", ephemeral=True)
             return
 
         embed = discord.Embed(
-            title="✅ Code Verified",
+            title="Code Verified",
             description=(
-                f"**Verified by:** {interaction.user.display_name}\n"
-                f"**Slot:** `{self.slot_key}`"
+                f"Verified by: {interaction.user.display_name}\n"
+                f"Slot: `{self.slot_key}`"
             ),
-            color=discord.Color.green(),
+            color=discord.Color.dark_green(),
         )
         for child in self.children:
             child.disabled = True
@@ -141,16 +142,16 @@ class TestTesterView(discord.ui.View):
     @discord.ui.button(label="Flag", style=discord.ButtonStyle.danger)
     async def flag(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not is_owner(interaction.user):
-            await interaction.response.send_message("❌ Test mode: Owner only.", ephemeral=True)
+            await interaction.response.send_message("Access denied. Owner clearance required.", ephemeral=True)
             return
 
         embed = discord.Embed(
-            title="🚩 Code Flagged",
+            title="Code Flagged",
             description=(
-                f"**Flagged by:** {interaction.user.display_name}\n"
-                f"**Slot:** `{self.slot_key}`"
+                f"Flagged by: {interaction.user.display_name}\n"
+                f"Slot: `{self.slot_key}`"
             ),
-            color=discord.Color.red(),
+            color=discord.Color.dark_red(),
         )
         for child in self.children:
             child.disabled = True
@@ -163,16 +164,16 @@ class TestGathererView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=AUTO_DELETE_SECONDS)
 
-    @discord.ui.button(label="Gather", style=discord.ButtonStyle.primary, emoji="🧬")
+    @discord.ui.button(label="Gather", style=discord.ButtonStyle.primary)
     async def gather(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not is_owner(interaction.user):
-            await interaction.response.send_message("❌ Test mode: Owner only.", ephemeral=True)
+            await interaction.response.send_message("Access denied. Owner clearance required.", ephemeral=True)
             return
 
         embed = discord.Embed(
-            title="🧬 Gathered",
-            description=f"Gathered by **{interaction.user.display_name}**",
-            color=discord.Color.green(),
+            title="Remains Collected",
+            description=f"Processed by: {interaction.user.display_name}",
+            color=discord.Color.dark_green(),
         )
         for child in self.children:
             child.disabled = True
@@ -192,9 +193,9 @@ class TestModeCog(commands.Cog, name="TestMode"):
     def _require_test_mode(self, ctx: commands.Context) -> str | None:
         """Return an error message if the caller can't use test commands, else None."""
         if not is_owner(ctx.author):
-            return "❌ Only the **Owner** can use test commands."
+            return "Access denied. Owner clearance required."
         if not is_test_mode():
-            return "⚠️ Test mode is not active. Use `!test` first."
+            return "Diagnostic mode is inactive. Run `!test` to initialize."
         return None
 
     # ── !test ────────────────────────────────────────────────────────
@@ -203,29 +204,29 @@ class TestModeCog(commands.Cog, name="TestMode"):
     async def test_cmd(self, ctx: commands.Context):
         """Activate test mode (sandbox)."""
         if not is_owner(ctx.author):
-            await ctx.send("❌ Only the **Owner** can toggle test mode.", delete_after=10)
+            await ctx.send("Access denied. Owner clearance required.", delete_after=10)
             return
 
         if is_test_mode():
-            await ctx.send("⚠️ Already in test mode. Use `!back` to exit.", delete_after=10)
+            await ctx.send("Diagnostic mode already active. Use `!back` to terminate.", delete_after=10)
             return
 
         enable_test_mode()
 
         embed = discord.Embed(
-            title="🧪 Test Mode — ACTIVE",
+            title="Diagnostic Mode — Active",
             description=(
-                "All systems now run in **sandbox mode**.\n\n"
-                "**Commands:**\n"
-                "`!builder`  — spawn a Builder code embed\n"
-                "`!tester`   — spawn a Tester verification embed\n"
-                "`!gatherer` — spawn a Gatherer resource embed\n"
-                "`!scheduler` — fire a schedule alert\n"
-                "`!back`     — exit test mode & clean up\n\n"
-                "• Nothing is saved to disk\n"
-                "• All embeds auto-delete after **10 minutes**"
+                "All systems operating in sandbox environment.\n\n"
+                "Available commands:\n"
+                "`!builder`  — generate a builder code embed\n"
+                "`!tester`   — generate a tester verification embed\n"
+                "`!gatherer` — generate a gatherer incident embed\n"
+                "`!scheduler` — simulate a schedule alert\n"
+                "`!back`     — terminate diagnostic mode\n\n"
+                "No data is written to storage.\n"
+                "All embeds are purged after 10 minutes."
             ),
-            color=discord.Color.orange(),
+            color=discord.Color.dark_orange(),
         )
         msg = await ctx.send(embed=embed)
         schedule_test_delete(msg)
@@ -237,11 +238,11 @@ class TestModeCog(commands.Cog, name="TestMode"):
     async def back_cmd(self, ctx: commands.Context):
         """Deactivate test mode and clean up."""
         if not is_owner(ctx.author):
-            await ctx.send("❌ Only the **Owner** can toggle test mode.", delete_after=10)
+            await ctx.send("Access denied. Owner clearance required.", delete_after=10)
             return
 
         if not is_test_mode():
-            await ctx.send("⚠️ Test mode is not active.", delete_after=10)
+            await ctx.send("Diagnostic mode is not active.", delete_after=10)
             return
 
         # Delete remaining test messages
@@ -254,9 +255,9 @@ class TestModeCog(commands.Cog, name="TestMode"):
         disable_test_mode()
 
         embed = discord.Embed(
-            title="✅ Test Mode — OFF",
-            description="All systems returned to **normal operation**.",
-            color=discord.Color.green(),
+            title="Diagnostic Mode — Terminated",
+            description="All systems returned to standard operation.",
+            color=discord.Color.dark_green(),
         )
         await ctx.send(embed=embed, delete_after=30)
         log.info("Test mode deactivated by %s", ctx.author)
@@ -273,11 +274,11 @@ class TestModeCog(commands.Cog, name="TestMode"):
 
         code = generate_code()
         embed = discord.Embed(
-            title="🔧 New Code Available",
+            title="New Code Generated",
             description=f"```\n{code}\n```",
-            color=discord.Color.blurple(),
+            color=discord.Color.dark_grey(),
         )
-        embed.set_footer(text="🧪 TEST MODE • Builders: Accept or Reject this code.")
+        embed.set_footer(text="DIAGNOSTIC — Awaiting builder input.")
 
         view = TestBuilderView(code=code)
         msg = await ctx.send(embed=embed, view=view)
@@ -298,7 +299,7 @@ class TestModeCog(commands.Cog, name="TestMode"):
 
         if not filled:
             await ctx.send(
-                "⚠️ Test chamber is empty. Use `!builder` and accept a code first.",
+                "Chamber is empty. Generate and accept a code with `!builder` first.",
                 delete_after=10,
             )
             return
@@ -308,11 +309,11 @@ class TestModeCog(commands.Cog, name="TestMode"):
         mutated = mutate_code(original)
 
         embed = discord.Embed(
-            title="🧪 Test Chamber Code",
+            title="Test Chamber Code",
             description=f"```\n{original}\n```\n```\n{mutated}\n```",
-            color=discord.Color.gold(),
+            color=discord.Color.dark_grey(),
         )
-        embed.set_footer(text=f"🧪 TEST MODE • Slot: {slot_key} • Testers: Verify or Flag.")
+        embed.set_footer(text=f"DIAGNOSTIC — Slot: {slot_key} — Awaiting tester input.")
 
         view = TestTesterView(slot_key=slot_key)
         msg = await ctx.send(embed=embed, view=view)
@@ -330,13 +331,14 @@ class TestModeCog(commands.Cog, name="TestMode"):
 
         num_a = random.randint(1, 485)
         num_b = random.randint(1, 117)
+        cube = random.choice(CUBE_EMOJIS)
 
         embed = discord.Embed(
-            title="🧬 Resource Alert",
-            description=f"🧬 **{num_a}-{num_b}** has died",
+            title="Incident Report",
+            description=f"{cube} Subject **{num_a}-{num_b}** has died.",
             color=discord.Color.dark_purple(),
         )
-        embed.set_footer(text="🧪 TEST MODE • Gatherers: Click the button below to gather.")
+        embed.set_footer(text="DIAGNOSTIC — Remains awaiting collection.")
 
         view = TestGathererView()
         msg = await ctx.send(embed=embed, view=view)
@@ -353,7 +355,7 @@ class TestModeCog(commands.Cog, name="TestMode"):
             return
 
         outage_line = random.choice(OUTAGE_MESSAGES)
-        content = f"🧪 **[TEST]** {outage_line}\n@here, Get back to work to your assigned roles."
+        content = f"[DIAGNOSTIC] {outage_line}\n@here, return to your assigned stations."
 
         msg = await ctx.send(
             content,

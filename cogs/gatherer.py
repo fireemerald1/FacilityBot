@@ -9,7 +9,7 @@ import random
 import discord
 from discord.ext import commands, tasks
 
-from config import CHANNEL_GATHERER, GATHERER_INTERVAL_H
+from config import CHANNEL_GATHERER, GATHERER_INTERVAL_H, CUBE_EMOJIS
 from utils.permissions import is_gatherer
 from utils.schedule import is_within_active_window
 
@@ -26,22 +26,21 @@ class GathererView(discord.ui.View):
         label="Gather",
         style=discord.ButtonStyle.primary,
         custom_id="gatherer_gather",
-        emoji="🧬",
     )
     async def gather_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         if not is_gatherer(interaction.user):
             await interaction.response.send_message(
-                "❌ You must have the **Gatherer** role to interact.",
+                "Access denied. Gatherer clearance required.",
                 ephemeral=True,
             )
             return
 
         embed = discord.Embed(
-            title="🧬 Gathered",
-            description=f"Gathered by **{interaction.user.display_name}**",
-            color=discord.Color.green(),
+            title="Remains Collected",
+            description=f"Processed by: {interaction.user.display_name}",
+            color=discord.Color.dark_green(),
         )
         for child in self.children:
             child.disabled = True
@@ -78,12 +77,14 @@ class GathererCog(commands.Cog, name="Gatherer"):
         num_a = random.randint(1, 485)
         num_b = random.randint(1, 117)
 
+        cube = random.choice(CUBE_EMOJIS)
+
         embed = discord.Embed(
-            title="🧬 Resource Alert",
-            description=f"🧬 **{num_a}-{num_b}** has died",
+            title="<:cube_31:1500111780003844248> Incident Report",
+            description=f"{cube} Subject **{num_a}-{num_b}** has died.",
             color=discord.Color.dark_purple(),
         )
-        embed.set_footer(text="Gatherers: Click the button below to gather.")
+        embed.set_footer(text="Remains awaiting collection.")
 
         view = GathererView()
         await channel.send(embed=embed, view=view)
