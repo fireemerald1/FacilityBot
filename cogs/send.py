@@ -83,9 +83,19 @@ class SendCog(commands.Cog, name="Send"):
             color=discord.Color.dark_grey(),
         )
         embed.add_field(
+            name="Communication",
+            value="`/c <message>` — Send message through facility terminal\n"
+                  "`/gather <id>` — Contain an anomaly (Gatherer only)",
+            inline=False,
+        )
+        embed.add_field(
             name="Boss Commands",
             value="`!promote @user` — Promote staff to supervisor\n"
-                  "`!purge <amount>` — Delete messages",
+                  "`!purge <amount>` — Delete messages\n"
+                  "`!set <var> <val>` — Change facility settings\n"
+                  "`!settings` — View current settings\n"
+                  "`!reset` — Reset settings to defaults\n"
+                  "`!anomaly` — Force-spawn an anomaly",
             inline=False,
         )
         embed.add_field(

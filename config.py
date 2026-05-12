@@ -57,9 +57,13 @@ import os as _os
 _DATA_DIR = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "data")
 _os.makedirs(_DATA_DIR, exist_ok=True)
 
-CHAMBER_FILE = _os.path.join(_DATA_DIR, "test-chamber.json")
-SCHEDULE_FILE = _os.path.join(_DATA_DIR, "schedule-state.json")
-PICK_FILE = _os.path.join(_DATA_DIR, "role-picks.json")
+CHAMBER_FILE    = _os.path.join(_DATA_DIR, "test-chamber.json")
+SCHEDULE_FILE   = _os.path.join(_DATA_DIR, "schedule-state.json")
+PICK_FILE       = _os.path.join(_DATA_DIR, "role-picks.json")
+IDENTITIES_FILE = _os.path.join(_DATA_DIR, "identities.json")
+CHAT_LOG_FILE   = _os.path.join(_DATA_DIR, "chat-log.json")
+VERIFY_FILE     = _os.path.join(_DATA_DIR, "verification.json")
+SETTINGS_FILE   = _os.path.join(_DATA_DIR, "settings.json")
 
 # ─── Schedule ────────────────────────────────────────────────────────
 ACTIVE_DAYS = {5, 6}               # Saturday=5, Sunday=6 (weekday())
@@ -113,3 +117,32 @@ SHIFT_END_MESSAGES = [
     "Today's work is done. The icons that remain are stronger for it. Dismissed.",
     "The facility thanks you. Rest — tomorrow, the chambers open again.",
 ]
+
+# ─── Anomaly Channels ────────────────────────────────────────────────
+ANOMALY_CHANNELS = (
+    CHANNEL_TESTER,
+    CHANNEL_BUILDER,
+    CHANNEL_GATHERER,
+    CHANNEL_GENERAL_STAFF,
+    CHANNEL_MEDIA,
+)
+
+# ─── Channel Purposes (for Anomaly AI context) ──────────────────────
+CHANNEL_PURPOSES = {
+    CHANNEL_TESTER: "where testers verify codes from the test chambers",
+    CHANNEL_BUILDER: "where builders accept or reject generated codes",
+    CHANNEL_GATHERER: "where gatherers collect remains of dead test subjects",
+    CHANNEL_GENERAL_STAFF: "where facility staff socialize and discuss between shifts",
+    CHANNEL_MEDIA: "where staff share media, images, and off-topic content",
+}
+
+# ─── Default Settings (overridden at runtime via !set) ───────────────
+DEFAULT_SETTINGS = {
+    "anomaly_chance": 3,           # 1/n chance per hour
+    "anomaly_timeout": 60,         # minutes before anomaly escapes
+    "anomaly_max": 1,              # max concurrent anomalies
+    "mute_duration": 5,            # minutes muted for protocol violation
+    "mute_misid_target": 2,        # minutes muted for misidentified person
+    "mute_misid_gatherer": 20,     # minutes muted for gatherer who misidentified
+    "verification_hours": 3,       # hours for verification window
+}

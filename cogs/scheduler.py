@@ -238,17 +238,17 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
     # ── Shift-end announcement ────────────────────────────────────────
 
     async def _send_shift_end_message(self) -> None:
-        """Send a lore-themed end-of-shift message to general-staff and media."""
+        """Send a lore-themed end-of-shift message to the alert channel."""
         message_text = random.choice(SHIFT_END_MESSAGES)
-        for ch_id in (CHANNEL_GENERAL_STAFF, CHANNEL_MEDIA):
-            channel = self.bot.get_channel(ch_id)
-            if channel is None:
-                continue
-            try:
-                await channel.send(message_text)
-                log.info("Sent shift-end message to %s.", channel.name)
-            except Exception as exc:
-                log.warning("Failed to send shift-end message to %s: %s", ch_id, exc)
+        channel = self.bot.get_channel(CHANNEL_ALERT)
+        if channel is None:
+            log.warning("Alert channel not found for shift-end message.")
+            return
+        try:
+            await channel.send(message_text)
+            log.info("Sent shift-end message to %s.", channel.name)
+        except Exception as exc:
+            log.warning("Failed to send shift-end message to %s: %s", channel.name, exc)
 
     # ── New-week button cleanup ──────────────────────────────────────
 

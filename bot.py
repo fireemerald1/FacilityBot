@@ -39,6 +39,7 @@ bot = commands.Bot(
 # ── Cog list (add more here later) ──────────────────────────────────
 # scheduler loads first so it can manage work-cog lifecycle
 EXTENSIONS = [
+    "cogs.settings",     # load first — other cogs read from get_setting()
     "cogs.scheduler",
     "cogs.builder",
     "cogs.tester",
@@ -47,6 +48,10 @@ EXTENSIONS = [
     "cogs.testmode",
     "cogs.send",
     "cogs.admin",
+    "cogs.chat",
+    "cogs.enforcer",
+    "cogs.anomaly",
+    "cogs.verification",
 ]
 
 
