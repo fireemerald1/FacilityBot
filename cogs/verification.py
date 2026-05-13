@@ -19,8 +19,7 @@ from datetime import datetime, timezone, timedelta
 import discord
 from discord.ext import commands, tasks
 
-from config import VERIFY_FILE
-from cogs.settings import get_setting
+import config
 
 log = logging.getLogger("facility.verification")
 
@@ -39,14 +38,14 @@ CHALLENGE_WORDS = [
 # ── Persistence ──────────────────────────────────────────────────────
 
 def _load_verify() -> dict:
-    if os.path.exists(VERIFY_FILE):
-        with open(VERIFY_FILE, "r", encoding="utf-8") as f:
+    if os.path.exists(config.VERIFY_FILE):
+        with open(config.VERIFY_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
 
 
 def _save_verify(data: dict) -> None:
-    with open(VERIFY_FILE, "w", encoding="utf-8") as f:
+    with open(config.VERIFY_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
@@ -101,18 +100,15 @@ class RoleSelectView(discord.ui.View):
 
     @discord.ui.button(label="Tester", style=discord.ButtonStyle.secondary)
     async def pick_tester(self, interaction: discord.Interaction, button: discord.ui.Button):
-        from config import ROLE_TESTER
-        await self._assign_role(interaction, "Tester", ROLE_TESTER)
+        await self._assign_role(interaction, "Tester", config.ROLE_TESTER)
 
     @discord.ui.button(label="Gatherer", style=discord.ButtonStyle.secondary)
     async def pick_gatherer(self, interaction: discord.Interaction, button: discord.ui.Button):
-        from config import ROLE_GATHERER
-        await self._assign_role(interaction, "Gatherer", ROLE_GATHERER)
+        await self._assign_role(interaction, "Gatherer", config.ROLE_GATHERER)
 
     @discord.ui.button(label="Builder", style=discord.ButtonStyle.secondary)
     async def pick_builder(self, interaction: discord.Interaction, button: discord.ui.Button):
-        from config import ROLE_BUILDER
-        await self._assign_role(interaction, "Builder", ROLE_BUILDER)
+        await self._assign_role(interaction, "Builder", config.ROLE_BUILDER)
 
 
 # ── Cog ──────────────────────────────────────────────────────────────
@@ -146,7 +142,7 @@ class VerificationCog(commands.Cog, name="Verification"):
             if info.get("verified"):
                 # Check if 3h has passed — send role selection
                 joined = datetime.fromisoformat(info["joined_at"])
-                hours = get_setting("verification_hours")
+                hours = config.VERIFICATION_HOURS
                 if now >= joined + timedelta(hours=hours):
                     asyncio.create_task(self._send_role_selection(uid))
                 continue
@@ -165,7 +161,7 @@ class VerificationCog(commands.Cog, name="Verification"):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
-        hours = get_setting("verification_hours")
+        hours = config.VERIFICATION_HOURS
         now = datetime.now(timezone.utc)
 
         # Random time within the verification window
@@ -275,7 +271,7 @@ class VerificationCog(commands.Cog, name="Verification"):
 
             # Check if 3h has passed
             joined = datetime.fromisoformat(info["joined_at"])
-            hours = get_setting("verification_hours")
+            hours = config.VERIFICATION_HOURS
             remaining = (joined + timedelta(hours=hours)) - datetime.now(timezone.utc)
 
             if remaining.total_seconds() <= 0:

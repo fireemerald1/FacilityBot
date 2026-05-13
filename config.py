@@ -136,13 +136,10 @@ CHANNEL_PURPOSES = {
     CHANNEL_MEDIA: "where staff share media, images, and off-topic content",
 }
 
-# ─── Default Settings (overridden at runtime via !set) ───────────────
-DEFAULT_SETTINGS = {
-    "anomaly_chance": 3,           # 1/n chance per hour
-    "anomaly_timeout": 60,         # minutes before anomaly escapes
-    "anomaly_max": 1,              # max concurrent anomalies
-    "mute_duration": 5,            # minutes muted for protocol violation
-    "mute_misid_target": 2,        # minutes muted for misidentified person
-    "mute_misid_gatherer": 20,     # minutes muted for gatherer who misidentified
-    "verification_hours": 3,       # hours for verification window
-}
+ANOMALY_CHANCE = 3             # 1/n chance per hour
+ANOMALY_TIMEOUT = 60           # minutes before anomaly escapes
+ANOMALY_MAX = 1                # max concurrent anomalies
+MUTE_DURATION = 5              # minutes muted for protocol violation
+MUTE_MISID_TARGET = 2          # minutes muted for misidentified person
+MUTE_MISID_GATHERER = 20       # minutes muted for gatherer who misidentified
+VERIFICATION_HOURS = 3         # hours for verification window

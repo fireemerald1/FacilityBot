@@ -7,17 +7,12 @@ import os
 from datetime import datetime, timezone
 from teststate import is_test_mode
 
-from config import (
-    ACTIVE_DAYS,
-    ACTIVE_START_HOUR,
-    ACTIVE_END_HOUR,
-    SCHEDULE_FILE,
-)
+import config
 
 
 def _state_path() -> str:
     """Return the absolute path to schedule-state.json."""
-    return SCHEDULE_FILE
+    return config.SCHEDULE_FILE
 
 
 def load_schedule_state() -> dict:
@@ -39,7 +34,7 @@ def is_within_active_window() -> bool:
     if is_test_mode():
         return True
     now = datetime.now(timezone.utc)
-    return now.weekday() in ACTIVE_DAYS and ACTIVE_START_HOUR <= now.hour < ACTIVE_END_HOUR
+    return now.weekday() in config.ACTIVE_DAYS and config.ACTIVE_START_HOUR <= now.hour < config.ACTIVE_END_HOUR
 
 
 def iso_week(dt: datetime) -> str:

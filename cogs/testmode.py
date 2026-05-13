@@ -19,15 +19,7 @@ import random
 import discord
 from discord.ext import commands
 
-from config import (
-    CHANNEL_ALERT,
-    CHANNEL_BUILDER,
-    CHANNEL_TESTER,
-    CHANNEL_GATHERER,
-    TRAP_CODE,
-    OUTAGE_MESSAGES,
-    CUBE_EMOJIS,
-)
+import config
 from utils.code_gen import generate_code, mutate_code
 from utils.permissions import is_owner
 from storage import load_chamber, get_filled_slots, get_next_available_slot, set_slot
@@ -85,7 +77,7 @@ class TestBuilderView(discord.ui.View):
             color=discord.Color.dark_green(),
         )
         # Store in test chamber (memory only)
-        if self.code != TRAP_CODE:
+        if self.code != config.TRAP_CODE:
             data = load_chamber()
             slot = get_next_available_slot(data)
             if slot:
@@ -331,7 +323,7 @@ class TestModeCog(commands.Cog, name="TestMode"):
 
         num_a = random.randint(1, 485)
         num_b = random.randint(1, 117)
-        cube = random.choice(CUBE_EMOJIS)
+        cube = random.choice(config.CUBE_EMOJIS)
 
         embed = discord.Embed(
             title="Incident Report",
@@ -354,7 +346,7 @@ class TestModeCog(commands.Cog, name="TestMode"):
             await ctx.send(err, delete_after=10)
             return
 
-        outage_line = random.choice(OUTAGE_MESSAGES)
+        outage_line = random.choice(config.OUTAGE_MESSAGES)
         content = f"[DIAGNOSTIC] {outage_line}\n@here, return to your assigned stations."
 
         msg = await ctx.send(

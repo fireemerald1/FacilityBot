@@ -15,9 +15,8 @@ from datetime import datetime, timezone, timedelta
 import discord
 from discord.ext import commands
 
-from config import CHAT_LOG_FILE
+import config
 from cogs.chat import get_identity, remove_identity
-from cogs.settings import get_setting
 from utils.permissions import is_boss
 
 log = logging.getLogger("facility.enforcer")
@@ -56,16 +55,16 @@ def log_chat_message(
     }
 
     data = []
-    if os.path.exists(CHAT_LOG_FILE):
+    if os.path.exists(config.CHAT_LOG_FILE):
         try:
-            with open(CHAT_LOG_FILE, "r", encoding="utf-8") as f:
+            with open(config.CHAT_LOG_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except (json.JSONDecodeError, ValueError):
             data = []
 
     data.append(entry)
 
-    with open(CHAT_LOG_FILE, "w", encoding="utf-8") as f:
+    with open(config.CHAT_LOG_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
@@ -104,7 +103,7 @@ class EnforcerCog(commands.Cog, name="Enforcer"):
             pass
 
         # Mute
-        mute_minutes = get_setting("mute_duration")
+        mute_minutes = config.MUTE_DURATION
         try:
             until = discord.utils.utcnow() + timedelta(minutes=mute_minutes)
             await message.author.timeout(until, reason="Protocol violation — used normal message instead of /c")

@@ -15,53 +15,43 @@ from datetime import datetime, timezone, timedelta
 import discord
 from discord.ext import commands
 
-from config import (
-    ROLE_TESTER,
-    ROLE_GATHERER,
-    ROLE_BUILDER,
-    ROLE_SUPERVISOR_TESTER,
-    ROLE_SUPERVISOR_GATHERER,
-    ROLE_SUPERVISOR_BUILDER,
-    ROLE_PICK_COOLDOWN_DAYS,
-    PICK_FILE,
-    CHANNEL_PROMOTION,
-)
+import config
 from utils.permissions import is_boss
 
 log = logging.getLogger("facility.roles")
 
 WORK_ROLES = {
-    "tester": ROLE_TESTER,
-    "gatherer": ROLE_GATHERER,
-    "builder": ROLE_BUILDER,
+    "tester": config.ROLE_TESTER,
+    "gatherer": config.ROLE_GATHERER,
+    "builder": config.ROLE_BUILDER,
 }
 
 # Maps work role ID → supervisor role ID
 SUPERVISOR_MAP = {
-    ROLE_TESTER: ROLE_SUPERVISOR_TESTER,
-    ROLE_GATHERER: ROLE_SUPERVISOR_GATHERER,
-    ROLE_BUILDER: ROLE_SUPERVISOR_BUILDER,
+    config.ROLE_TESTER: config.ROLE_SUPERVISOR_TESTER,
+    config.ROLE_GATHERER: config.ROLE_SUPERVISOR_GATHERER,
+    config.ROLE_BUILDER: config.ROLE_SUPERVISOR_BUILDER,
 }
 
 # Maps supervisor role ID → display name
 SUPERVISOR_NAMES = {
-    ROLE_SUPERVISOR_TESTER: "Tester Supervisor",
-    ROLE_SUPERVISOR_GATHERER: "Gatherer Supervisor",
-    ROLE_SUPERVISOR_BUILDER: "Builder Supervisor",
+    config.ROLE_SUPERVISOR_TESTER: "Tester Supervisor",
+    config.ROLE_SUPERVISOR_GATHERER: "Gatherer Supervisor",
+    config.ROLE_SUPERVISOR_BUILDER: "Builder Supervisor",
 }
 
 
 # ── Pick storage ─────────────────────────────────────────────────────
 
 def _load_picks() -> dict:
-    if not os.path.exists(PICK_FILE):
+    if not os.path.exists(config.PICK_FILE):
         return {}
-    with open(PICK_FILE, "r", encoding="utf-8") as f:
+    with open(config.PICK_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def _save_picks(data: dict) -> None:
-    with open(PICK_FILE, "w", encoding="utf-8") as f:
+    with open(config.PICK_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
@@ -121,7 +111,7 @@ class PickView(discord.ui.View):
             if last_pick_iso:
                 last_pick = datetime.fromisoformat(last_pick_iso)
                 elapsed = datetime.now(timezone.utc) - last_pick
-                required = timedelta(days=ROLE_PICK_COOLDOWN_DAYS)
+                required = timedelta(days=config.ROLE_PICK_COOLDOWN_DAYS)
                 if elapsed < required:
                     remaining = required - elapsed
                     days_left = remaining.days
@@ -261,7 +251,7 @@ class RolesCog(commands.Cog, name="Roles"):
         log.info("%s promoted %s to %s", ctx.author, member, title)
 
         # Announce in promotion channel
-        promo_channel = self.bot.get_channel(CHANNEL_PROMOTION)
+        promo_channel = self.bot.get_channel(config.CHANNEL_PROMOTION)
         if promo_channel:
             announcement = f"user_{member.id} has been promoted to {title}."
             try:

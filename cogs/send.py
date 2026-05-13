@@ -11,7 +11,7 @@ import re
 import discord
 from discord.ext import commands
 
-from config import CUBE_EMOJIS
+import config
 
 log = logging.getLogger("facility.send")
 
@@ -43,8 +43,8 @@ class SendCog(commands.Cog, name="Send"):
         match = re.match(r"^\[(\d+)\]\s*", message)
         if match:
             cube_id = int(match.group(1))
-            if 1 <= cube_id <= len(CUBE_EMOJIS):
-                cube_emoji = CUBE_EMOJIS[cube_id - 1]
+            if 1 <= cube_id <= len(config.CUBE_EMOJIS):
+                cube_emoji = config.CUBE_EMOJIS[cube_id - 1]
                 message = message[match.end():]  # remove the [X] part
                 message = f"{cube_emoji} {message}"
 

@@ -16,21 +16,7 @@ from datetime import datetime, timezone
 import discord
 from discord.ext import commands, tasks
 
-from config import (
-    CHANNEL_ALERT,
-    CHANNEL_BUILDER,
-    CHANNEL_TESTER,
-    CHANNEL_GATHERER,
-    CHANNEL_GENERAL_STAFF,
-    CHANNEL_MEDIA,
-    ACTIVE_DAYS,
-    ACTIVE_START_HOUR,
-    ACTIVE_END_HOUR,
-    LATE_THRESHOLD_MINUTES,
-    SCHEDULE_CHECK_INTERVAL_S,
-    OUTAGE_MESSAGES,
-    SHIFT_END_MESSAGES,
-)
+import config
 from utils.schedule import (
     is_within_active_window,
     load_schedule_state,
@@ -61,13 +47,13 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
 
     # ── Main loop ────────────────────────────────────────────────────
 
-    @tasks.loop(seconds=SCHEDULE_CHECK_INTERVAL_S)
+    @tasks.loop(seconds=config.SCHEDULE_CHECK_INTERVAL_S)
     async def schedule_loop(self):
         if is_test_mode():
             return  # testmode cog handles the cycle
         now = datetime.now(timezone.utc)
         today_weekday = now.weekday()
-        is_active_day = today_weekday in ACTIVE_DAYS
+        is_active_day = today_weekday in config.ACTIVE_DAYS
         current_week = iso_week(now)
 
         state = load_schedule_state()
@@ -94,13 +80,13 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
             save_schedule_state(state)
 
         # ── 05:00 UTC start alert ────────────────────────────────────
-        if now.hour >= ACTIVE_START_HOUR and now.hour < ACTIVE_END_HOUR and not self._start_sent:
+        if now.hour >= config.ACTIVE_START_HOUR and now.hour < config.ACTIVE_END_HOUR and not self._start_sent:
             last_alert_date = state.get("last_alert_date")
             today_str = now.strftime("%Y-%m-%d")
 
             if last_alert_date != today_str:
-                minutes_past = (now.hour - ACTIVE_START_HOUR) * 60 + now.minute
-                is_late = minutes_past >= LATE_THRESHOLD_MINUTES
+                minutes_past = (now.hour - config.ACTIVE_START_HOUR) * 60 + now.minute
+                is_late = minutes_past >= config.LATE_THRESHOLD_MINUTES
                 await self._send_start_alert(is_late)
 
                 state["last_alert_date"] = today_str
@@ -112,7 +98,7 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
             self._start_sent = True
 
         # ── 17:00 UTC shutdown ───────────────────────────────────────
-        if now.hour >= ACTIVE_END_HOUR and not self._shutdown_done:
+        if now.hour >= config.ACTIVE_END_HOUR and not self._shutdown_done:
             await self._do_shutdown()
             self._shutdown_done = True
 
@@ -123,13 +109,13 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
     # ── Alert messages ───────────────────────────────────────────────
 
     async def _send_start_alert(self, is_late: bool) -> None:
-        channel = self.bot.get_channel(CHANNEL_ALERT)
+        channel = self.bot.get_channel(config.CHANNEL_ALERT)
         if channel is None:
             log.warning("Alert channel not found.")
             return
 
         if is_late:
-            outage_line = random.choice(OUTAGE_MESSAGES)
+            outage_line = random.choice(config.OUTAGE_MESSAGES)
             content = f"{outage_line}\n@here, return to your assigned stations."
         else:
             content = "@here, return to your assigned stations."
@@ -141,7 +127,7 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
 
     async def _lock_channels(self) -> None:
         """Remove send_messages for @everyone in general-staff and media."""
-        for ch_id in (CHANNEL_GENERAL_STAFF, CHANNEL_MEDIA):
+        for ch_id in (config.CHANNEL_GENERAL_STAFF, config.CHANNEL_MEDIA):
             channel = self.bot.get_channel(ch_id)
             if channel is None:
                 continue
@@ -158,7 +144,7 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
 
     async def _unlock_channels(self) -> None:
         """Restore send_messages for @everyone in general-staff and media."""
-        for ch_id in (CHANNEL_GENERAL_STAFF, CHANNEL_MEDIA):
+        for ch_id in (config.CHANNEL_GENERAL_STAFF, config.CHANNEL_MEDIA):
             channel = self.bot.get_channel(ch_id)
             if channel is None:
                 continue
@@ -198,7 +184,7 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
         log.info("17:00 UTC shutdown — disabling active embeds.")
 
         # Disable buttons in all three work channels
-        for ch_id in (CHANNEL_BUILDER, CHANNEL_TESTER, CHANNEL_GATHERER):
+        for ch_id in (config.CHANNEL_BUILDER, config.CHANNEL_TESTER, config.CHANNEL_GATHERER):
             channel = self.bot.get_channel(ch_id)
             if channel is None:
                 continue
@@ -239,8 +225,8 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
 
     async def _send_shift_end_message(self) -> None:
         """Send a lore-themed end-of-shift message to the alert channel."""
-        message_text = random.choice(SHIFT_END_MESSAGES)
-        channel = self.bot.get_channel(CHANNEL_ALERT)
+        message_text = random.choice(config.SHIFT_END_MESSAGES)
+        channel = self.bot.get_channel(config.CHANNEL_ALERT)
         if channel is None:
             log.warning("Alert channel not found for shift-end message.")
             return
@@ -254,7 +240,7 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
 
     async def _disable_all_channel_buttons(self) -> None:
         """Scan work channels and disable every button the bot owns."""
-        for ch_id in (CHANNEL_BUILDER, CHANNEL_TESTER, CHANNEL_GATHERER):
+        for ch_id in (config.CHANNEL_BUILDER, config.CHANNEL_TESTER, config.CHANNEL_GATHERER):
             channel = self.bot.get_channel(ch_id)
             if channel is None:
                 continue

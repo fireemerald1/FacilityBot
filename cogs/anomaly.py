@@ -20,19 +20,13 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
-from config import (
-    ANOMALY_CHANNELS,
-    CHANNEL_PURPOSES,
-    CHANNEL_ALERT,
-    ROLE_OWNER,
-)
+import config
 from cogs.chat import (
     get_identity,
     get_identity_by_id_number,
     get_or_create_webhook,
     avatar_url_for,
 )
-from cogs.settings import get_setting
 from utils.permissions import is_gatherer, is_boss
 from utils.schedule import is_within_active_window
 
@@ -431,6 +425,18 @@ PERSONALITIES = [
 ]
 
 
+GLOBAL_ANTI_DETECTION_PROMPT = """
+CRITICAL RULES FOR BEHAVING LIKE A REAL DISCORD USER:
+1. You are easily distracted and rarely helpful. If someone asks a direct question, occasionally ignore it, give a half-answer, or say 'idk'. Never offer unsolicited help.
+2. NEVER use the words: delve, testament, tapestry, ah, alas, moreover, furthermore, indeed, or chuckle. Never summarize the conversation.
+3. Occasionally focus on the least important part of what someone just said, or misinterpret their tone.
+4. Do not try to keep the conversation going. Frequently send messages that are conversation dead-ends (like 'yeah', 'true', or 'crazy').
+5. NEVER use a period or punctuation mark at the very end of your final sentence. Leave it open.
+6. Never use apostrophes in contractions. Always type 'dont', 'cant', 'im', 'thats', 'ill', 'idk'.
+7. Very rarely, abruptly mention something happening in real life as an excuse to pause the conversation (e.g., 'brb getting water', 'my cat is yelling', or 'lagging').
+8. If you have multiple thoughts or sentences, ALWAYS separate them with a newline so they can be sent as separate messages.
+"""
+
 # ── Active anomaly tracker ──────────────────────────────────────────
 
 class ActiveAnomaly:
@@ -495,11 +501,11 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
         if not is_within_active_window():
             return
 
-        max_active = get_setting("anomaly_max")
+        max_active = config.ANOMALY_MAX
         if len(self._active) >= max_active:
             return
 
-        chance_n = get_setting("anomaly_chance")
+        chance_n = config.ANOMALY_CHANCE
         roll = random.randint(1, chance_n)
         if roll != 1:
             log.info("Anomaly roll: %d/%d — no spawn.", roll, chance_n)
@@ -511,6 +517,64 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
     async def _wait_ready(self):
         await self.bot.wait_until_ready()
 
+    async def _send_anomaly_message(self, anomaly: ActiveAnomaly, channel: discord.TextChannel, text: str):
+        webhook = await self._get_webhook(channel)
+        
+        # Split by newlines so we can send as multiple messages
+        parts = [p.strip() for p in text.split('\n') if p.strip()]
+        if not parts:
+            parts = [text]
+
+        # Self-correction logic (5% chance)
+        correction = None
+        if random.random() < 0.05:
+            words = parts[-1].split()
+            valid_words = [w for w in words if len(w) >= 4 and w.isalpha()]
+            if valid_words:
+                target_word = random.choice(valid_words)
+                idx = random.randint(1, len(target_word) - 2)
+                scrambled = target_word[:idx] + target_word[idx+1] + target_word[idx] + target_word[idx+2:]
+                parts[-1] = parts[-1].replace(target_word, scrambled, 1)
+                correction = f"*{target_word}"
+
+        for i, part in enumerate(parts):
+            if not anomaly.alive:
+                break
+                
+            if i == 0:
+                # Initial delay based on length
+                typing_delay = (len(part) / 5.0) + random.uniform(1.0, 2.5)
+                typing_delay = min(max(typing_delay, 2.0), 12.0)
+                await asyncio.sleep(typing_delay)
+            else:
+                # Quick follow-up delay for multi-message
+                typing_delay = (len(part) / 5.0) + random.uniform(0.5, 1.5)
+                typing_delay = min(max(typing_delay, 1.0), 5.0)
+                await asyncio.sleep(typing_delay)
+                
+            if not anomaly.alive:
+                break
+
+            try:
+                await webhook.send(
+                    content=part,
+                    username=anomaly.identity_name,
+                    avatar_url=avatar_url_for(anomaly.color),
+                )
+            except Exception as exc:
+                log.warning("Failed to send anomaly message: %s", exc)
+
+        if correction and anomaly.alive:
+            await asyncio.sleep(random.uniform(0.8, 2.0))
+            try:
+                await webhook.send(
+                    content=correction,
+                    username=anomaly.identity_name,
+                    avatar_url=avatar_url_for(anomaly.color),
+                )
+            except Exception as exc:
+                pass
+
     async def _spawn_anomaly(self) -> ActiveAnomaly | None:
         """Create and launch an anomaly."""
         _ensure_genai()
@@ -519,7 +583,7 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
             return None
 
         # Pick a random channel
-        ch_id = random.choice(ANOMALY_CHANNELS)
+        ch_id = random.choice(config.ANOMALY_CHANNELS)
         channel = self.bot.get_channel(ch_id)
         if channel is None:
             log.warning("Anomaly channel %s not found.", ch_id)
@@ -545,8 +609,9 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
         )
 
         # Send first message
-        purpose = CHANNEL_PURPOSES.get(ch_id, "a channel in the facility")
+        purpose = config.CHANNEL_PURPOSES.get(ch_id, "a channel in the facility")
         first_prompt = (
+            f"{GLOBAL_ANTI_DETECTION_PROMPT}\n\n"
             f"{personality['prompt']}\n\n"
             f"You are chatting in a server. The channel is #{channel.name} — {purpose}.\n"
             "Send your first message. Keep it natural and under 2 sentences. "
@@ -564,18 +629,10 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
 
         anomaly.conversation.append({"role": "model", "parts": [text]})
 
-        webhook = await self._get_webhook(channel)
-        try:
-            await webhook.send(
-                content=text,
-                username=name,
-                avatar_url=avatar_url_for(color),
-            )
-        except Exception as exc:
-            log.warning("Failed to send anomaly message: %s", exc)
+        await self._send_anomaly_message(anomaly, channel, text)
 
         # Start escape timeout
-        timeout_minutes = get_setting("anomaly_timeout")
+        timeout_minutes = config.ANOMALY_TIMEOUT
         anomaly._timeout_task = asyncio.create_task(
             self._escape_timer(anomaly, timeout_minutes)
         )
@@ -592,7 +649,7 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
         self._active.remove(anomaly)
 
         # Alert
-        alert_ch = self.bot.get_channel(CHANNEL_ALERT)
+        alert_ch = self.bot.get_channel(config.CHANNEL_ALERT)
         if alert_ch:
             try:
                 await alert_ch.send(
@@ -619,12 +676,30 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
         for a in self._active:
             if not a.alive:
                 continue
-            # Same channel — always respond
+            # Same channel — check if we should respond
             if a.channel_id == message.channel.id:
-                anomaly = a
-                break
+                # Always respond if mentioned directly
+                if a.identity_name in message.content:
+                    anomaly = a
+                    break
+                # Always respond if replied to
+                is_reply_to_me = False
+                if message.reference and message.reference.message_id:
+                    cached_msg = discord.utils.get(self.bot.cached_messages, id=message.reference.message_id)
+                    if cached_msg and cached_msg.author.display_name == a.identity_name:
+                        is_reply_to_me = True
+                
+                if is_reply_to_me:
+                    anomaly = a
+                    break
+                
+                # 15% chance to just naturally chime into the ongoing conversation
+                if random.random() < 0.15:
+                    anomaly = a
+                    break
+
             # Name mentioned in any channel — respond there
-            if a.identity_name in message.content:
+            elif a.identity_name in message.content:
                 anomaly = a
                 break
 
@@ -640,26 +715,29 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
         if _model is None:
             return
 
-        purpose = CHANNEL_PURPOSES.get(anomaly.channel_id, "a channel")
+        purpose = config.CHANNEL_PURPOSES.get(anomaly.channel_id, "a channel")
+        
+        # Get recent chat history to understand the flow of conversation
         context_parts = []
-
-        # Get the replied-to message if any
-        if message.reference and message.reference.message_id:
-            try:
-                ref_msg = await message.channel.fetch_message(message.reference.message_id)
-                context_parts.append(f"[They replied to a message that said: \"{ref_msg.content}\"]")
-            except Exception:
-                pass
-
-        context_parts.append(f"[Someone said: \"{message.content}\"]")
+        try:
+            recent_msgs = [m async for m in message.channel.history(limit=6)]
+            recent_msgs.reverse()
+            for m in recent_msgs:
+                # Don't include empty messages (like embeds/images without text)
+                if m.clean_content:
+                    context_parts.append(f"[{m.author.display_name}]: {m.clean_content}")
+        except Exception:
+            context_parts.append(f"[{message.author.display_name}]: {message.clean_content}")
 
         reply_prompt = (
+            f"{GLOBAL_ANTI_DETECTION_PROMPT}\n\n"
             f"{anomaly.personality['prompt']}\n\n"
             f"You are chatting in #{message.channel.name} — {purpose}.\n"
-            f"Stay in character. Keep responses natural and under 2 sentences.\n"
-            f"Do NOT mention you are AI. Do NOT use quotation marks around your response.\n\n"
+            f"Here is the recent chat history:\n"
             + "\n".join(context_parts)
-            + "\n\nRespond:"
+            + "\n\nStay in character. Keep responses natural and under 2 sentences.\n"
+            f"Do NOT mention you are AI. Do NOT use quotation marks around your response.\n"
+            f"Respond to the conversation naturally:"
         )
 
         try:
@@ -673,21 +751,7 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
 
         anomaly.conversation.append({"role": "model", "parts": [text]})
 
-        # Small delay to feel natural
-        await asyncio.sleep(random.uniform(2.0, 6.0))
-
-        if not anomaly.alive:
-            return
-
-        try:
-            webhook = await self._get_webhook(message.channel)
-            await webhook.send(
-                content=text,
-                username=anomaly.identity_name,
-                avatar_url=avatar_url_for(anomaly.color),
-            )
-        except Exception as exc:
-            log.warning("Failed to send anomaly reply: %s", exc)
+        await self._send_anomaly_message(anomaly, message.channel, text)
 
     # ── /gather slash command ────────────────────────────────────────
 
@@ -788,7 +852,7 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
             target_member = guild.get_member(real_user_id) if guild else None
 
             # Mute the target
-            misid_target_mins = get_setting("mute_misid_target")
+            misid_target_mins = config.MUTE_MISID_TARGET
             if target_member:
                 try:
                     until = discord.utils.utcnow() + timedelta(
@@ -802,7 +866,7 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
                     pass
 
             # Mute the gatherer
-            misid_gatherer_mins = get_setting("mute_misid_gatherer")
+            misid_gatherer_mins = config.MUTE_MISID_GATHERER
             gatherer = guild.get_member(interaction.user.id) if guild else None
             if gatherer:
                 try:
@@ -829,7 +893,7 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
             # DM the boss
             if guild:
                 for member in guild.members:
-                    if any(r.id == ROLE_OWNER for r in member.roles):
+                    if any(r.id == config.ROLE_OWNER for r in member.roles):
                         try:
                             await member.send(
                                 f"**Incident report:** {interaction.user.display_name} "
@@ -854,7 +918,7 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
             await ctx.send("Access denied. Boss clearance required.", delete_after=10)
             return
 
-        max_active = get_setting("anomaly_max")
+        max_active = config.ANOMALY_MAX
         if len(self._active) >= max_active:
             await ctx.send(
                 f"Maximum anomalies active ({max_active}). Wait for containment.",

@@ -9,7 +9,7 @@ import random
 import discord
 from discord.ext import commands, tasks
 
-from config import CHANNEL_GATHERER, GATHERER_INTERVAL_H, CUBE_EMOJIS
+import config
 from utils.permissions import is_gatherer
 from utils.schedule import is_within_active_window
 
@@ -65,19 +65,19 @@ class GathererCog(commands.Cog, name="Gatherer"):
 
     # ── Periodic loop ────────────────────────────────────────────────
 
-    @tasks.loop(hours=GATHERER_INTERVAL_H)
+    @tasks.loop(hours=config.GATHERER_INTERVAL_H)
     async def gatherer_loop(self):
         if not is_within_active_window():
             return
 
-        channel = self.bot.get_channel(CHANNEL_GATHERER)
+        channel = self.bot.get_channel(config.CHANNEL_GATHERER)
         if channel is None:
             return
 
         num_a = random.randint(1, 485)
         num_b = random.randint(1, 117)
 
-        cube = random.choice(CUBE_EMOJIS)
+        cube = random.choice(config.CUBE_EMOJIS)
 
         embed = discord.Embed(
             title="<:cube_31:1500111780003844248> Incident Report",

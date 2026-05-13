@@ -12,11 +12,7 @@ import random
 import discord
 from discord.ext import commands, tasks
 
-from config import (
-    CHANNEL_TESTER,
-    MAX_ACTIVE_EMBEDS,
-    TESTER_CHECK_INTERVAL_S,
-)
+import config
 from utils.code_gen import mutate_code
 from utils.permissions import is_tester
 from storage import load_chamber, get_filled_slots
@@ -123,12 +119,12 @@ class TesterCog(commands.Cog, name="Tester"):
 
     # ── Periodic loop ────────────────────────────────────────────────
 
-    @tasks.loop(seconds=TESTER_CHECK_INTERVAL_S)
+    @tasks.loop(seconds=config.TESTER_CHECK_INTERVAL_S)
     async def tester_loop(self):
         """Top up active embeds using filled test-chamber slots."""
         if not is_within_active_window():
             return
-        if self.active_count >= MAX_ACTIVE_EMBEDS:
+        if self.active_count >= config.MAX_ACTIVE_EMBEDS:
             return
 
         data = load_chamber()
@@ -136,11 +132,11 @@ class TesterCog(commands.Cog, name="Tester"):
         if not filled:
             return  # nothing to test yet
 
-        channel = self.bot.get_channel(CHANNEL_TESTER)
+        channel = self.bot.get_channel(config.CHANNEL_TESTER)
         if channel is None:
             return
 
-        needed = MAX_ACTIVE_EMBEDS - self.active_count
+        needed = config.MAX_ACTIVE_EMBEDS - self.active_count
         for _ in range(needed):
             if not filled:
                 break

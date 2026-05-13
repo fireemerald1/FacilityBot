@@ -15,7 +15,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from config import IDENTITIES_FILE
+import config
 from utils.permissions import is_boss
 
 log = logging.getLogger("facility.chat")
@@ -23,14 +23,14 @@ log = logging.getLogger("facility.chat")
 # ── Identity management ─────────────────────────────────────────────
 
 def _load_identities() -> dict:
-    if os.path.exists(IDENTITIES_FILE):
-        with open(IDENTITIES_FILE, "r", encoding="utf-8") as f:
+    if os.path.exists(config.IDENTITIES_FILE):
+        with open(config.IDENTITIES_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
 
 
 def _save_identities(data: dict) -> None:
-    with open(IDENTITIES_FILE, "w", encoding="utf-8") as f:
+    with open(config.IDENTITIES_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 

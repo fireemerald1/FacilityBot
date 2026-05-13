@@ -5,7 +5,7 @@ Random code generation for the Builder system.
 import random
 import string
 
-from config import CODE_LENGTH, TRAP_CODE, TRAP_CHANCE
+import config
 
 # Printable characters visible on both PC and mobile.
 # Excludes whitespace / control chars that render inconsistently.
@@ -18,12 +18,12 @@ def generate_code() -> str:
     - 10 % chance the code is the trap code "&^^^&".
     - Otherwise a random string from CHAR_POOL, guaranteed NOT to contain "&^^^&".
     """
-    if random.random() < TRAP_CHANCE:
-        return TRAP_CODE
+    if random.random() < config.TRAP_CHANCE:
+        return config.TRAP_CODE
 
     while True:
-        code = "".join(random.choices(CHAR_POOL, k=CODE_LENGTH))
-        if TRAP_CODE not in code:
+        code = "".join(random.choices(CHAR_POOL, k=config.CODE_LENGTH))
+        if config.TRAP_CODE not in code:
             return code
 
 
@@ -39,7 +39,7 @@ def mutate_code(code: str) -> str:
         return code          # no mutation
 
     # Build list of indices safe to mutate (not inside a "&^^^&" span)
-    trap = TRAP_CODE
+    trap = config.TRAP_CODE
     protected: set[int] = set()
     start = 0
     while True:

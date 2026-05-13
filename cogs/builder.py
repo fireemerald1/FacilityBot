@@ -9,12 +9,7 @@ Builder System – generates codes, lets Builders accept/reject via buttons.
 import discord
 from discord.ext import commands, tasks
 
-from config import (
-    CHANNEL_BUILDER,
-    TRAP_CODE,
-    MAX_ACTIVE_EMBEDS,
-    BUILDER_CHECK_INTERVAL_S,
-)
+import config
 from utils.code_gen import generate_code
 from utils.permissions import is_builder
 from storage import load_chamber, get_next_available_slot, set_slot
@@ -63,7 +58,7 @@ class BuilderView(discord.ui.View):
         await interaction.response.edit_message(embed=embed, view=self)
 
         # ── Storage ─────────────────────────────────────────────────
-        if self.code != TRAP_CODE:
+        if self.code != config.TRAP_CODE:
             data = load_chamber()
             slot = get_next_available_slot(data)
             if slot:
@@ -137,19 +132,19 @@ class BuilderCog(commands.Cog, name="Builder"):
 
     # ── Periodic loop ────────────────────────────────────────────────
 
-    @tasks.loop(seconds=BUILDER_CHECK_INTERVAL_S)
+    @tasks.loop(seconds=config.BUILDER_CHECK_INTERVAL_S)
     async def builder_loop(self):
-        """Top up active embeds so there are always up to MAX_ACTIVE_EMBEDS."""
+        """Top up active embeds so there are always up to config.MAX_ACTIVE_EMBEDS."""
         if not is_within_active_window():
             return
-        if self.active_count >= MAX_ACTIVE_EMBEDS:
+        if self.active_count >= config.MAX_ACTIVE_EMBEDS:
             return
 
-        channel = self.bot.get_channel(CHANNEL_BUILDER)
+        channel = self.bot.get_channel(config.CHANNEL_BUILDER)
         if channel is None:
             return
 
-        needed = MAX_ACTIVE_EMBEDS - self.active_count
+        needed = config.MAX_ACTIVE_EMBEDS - self.active_count
         for _ in range(needed):
             code = generate_code()
             embed = discord.Embed(

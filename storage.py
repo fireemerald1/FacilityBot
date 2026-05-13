@@ -4,7 +4,7 @@ Helpers for reading / writing test-chamber.json.
 
 import json
 import os
-from config import CHAMBER_FILE, SLOT_CHAR_LIMIT
+import config
 from teststate import is_test_mode, get_test_chamber, set_test_chamber
 
 DEFAULT_CHAMBER = {
@@ -14,7 +14,7 @@ DEFAULT_CHAMBER = {
 
 
 def _path() -> str:
-    return CHAMBER_FILE
+    return config.CHAMBER_FILE
 
 
 def load_chamber() -> dict:
@@ -53,7 +53,7 @@ def set_slot(slot_key: str, code: str, accepted_by: str) -> bool:
     Returns False if the payload exceeds the char limit.
     """
     payload_len = len(code) + len(accepted_by)
-    if payload_len > SLOT_CHAR_LIMIT:
+    if payload_len > config.SLOT_CHAR_LIMIT:
         return False
 
     data = load_chamber()
