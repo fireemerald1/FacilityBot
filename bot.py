@@ -74,6 +74,18 @@ async def on_ready():
         log.warning("Command sync failed: %s", exc)
 
 
+@bot.event
+async def on_guild_join(guild: discord.Guild):
+    """Sync slash commands to a new guild immediately so /c is available right away."""
+    log.info("Joined guild: %s (ID: %s) — syncing commands…", guild.name, guild.id)
+    try:
+        bot.tree.copy_global_to(guild=guild)
+        synced = await bot.tree.sync(guild=guild)
+        log.info("Synced %d command(s) to %s.", len(synced), guild.name)
+    except Exception as exc:
+        log.warning("Failed to sync commands to %s: %s", guild.name, exc)
+
+
 async def main():
     async with bot:
         for ext in EXTENSIONS:
