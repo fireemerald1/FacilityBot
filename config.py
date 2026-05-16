@@ -143,3 +143,11 @@ MUTE_DURATION = 5              # minutes muted for protocol violation
 MUTE_MISID_TARGET = 2          # minutes muted for misidentified person
 MUTE_MISID_GATHERER = 20       # minutes muted for gatherer who misidentified
 VERIFICATION_HOURS = 3         # hours for verification window
+
+# ─── Cerebras AI (Anomaly) ───────────────────────────────────────────
+CEREBRAS_MODEL = "gpt-oss-120b"         # Model ID on Cerebras
+ANOMALY_HISTORY_SAMPLE = 30             # Messages to read for personality picking
+ANOMALY_LORE_KNOW_CHANCE = 0.03         # 3% chance on spawn to already know lore
+ANOMALY_LORE_DISCOVER_CHANCE = 0.10     # 10% chance per reply to discover lore mid-chat
+ANOMALY_LORE_MENTION_CHANCE = 0.12      # 12% chance per reply to reference known lore
+ANOMALY_LORE_FILE = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "anomaly-lore.json")

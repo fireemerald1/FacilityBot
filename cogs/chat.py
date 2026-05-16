@@ -9,6 +9,7 @@ Chat System – webhook-based communication via /c slash command.
 import json
 import os
 import random
+import re
 import logging
 
 import discord
@@ -19,6 +20,48 @@ import config
 from utils.permissions import is_boss
 
 log = logging.getLogger("facility.chat")
+
+# ── Message sanitisation ────────────────────────────────────────────
+
+# Patterns to strip from /c messages
+_RE_USER_MENTION = re.compile(r"<@!?\d+>")          # <@123> or <@!123>
+_RE_ROLE_MENTION = re.compile(r"<@&\d+>")            # <@&123>
+_RE_CHANNEL_MENTION = re.compile(r"<#\d+>")           # <#123>
+_RE_CUSTOM_EMOJI = re.compile(r"<a?:\w+:\d+>")        # <:name:id> or <a:name:id>
+_RE_URL = re.compile(r"https?://\S+", re.IGNORECASE)  # http:// or https://
+# Unicode emoji — covers most emoji ranges
+_RE_UNICODE_EMOJI = re.compile(
+    "["
+    "\U0001F600-\U0001F64F"  # emoticons
+    "\U0001F300-\U0001F5FF"  # symbols & pictographs
+    "\U0001F680-\U0001F6FF"  # transport & map
+    "\U0001F1E0-\U0001F1FF"  # flags
+    "\U00002702-\U000027B0"  # dingbats
+    "\U000024C2-\U0001F251"  # enclosed chars
+    "\U0001F900-\U0001F9FF"  # supplemental symbols
+    "\U0001FA00-\U0001FA6F"  # chess symbols
+    "\U0001FA70-\U0001FAFF"  # symbols extended-A
+    "\U00002600-\U000026FF"  # misc symbols
+    "\U0000FE00-\U0000FE0F"  # variation selectors
+    "\U0000200D"             # zero-width joiner
+    "\U00000023\U000020E3"   # keycap #
+    "\U0000002A\U000020E3"   # keycap *
+    "]+",
+    flags=re.UNICODE,
+)
+
+
+def sanitize_message(text: str) -> str:
+    """Strip pings, custom emoji, links, and unicode emoji from a message."""
+    text = _RE_USER_MENTION.sub("", text)
+    text = _RE_ROLE_MENTION.sub("", text)
+    text = _RE_CHANNEL_MENTION.sub("", text)
+    text = _RE_CUSTOM_EMOJI.sub("", text)
+    text = _RE_URL.sub("", text)
+    text = _RE_UNICODE_EMOJI.sub("", text)
+    # Collapse multiple spaces and strip
+    text = re.sub(r"  +", " ", text).strip()
+    return text
 
 # ── Identity management ─────────────────────────────────────────────
 
@@ -94,6 +137,30 @@ def get_all_identities() -> dict:
     return _load_identities()
 
 
+def rotate_all_identities() -> int:
+    """Reassign every user a fresh random #XXXXX# and color. Returns count."""
+    data = _load_identities()
+    if not data:
+        return 0
+
+    new_data = {}
+    used_names: set[str] = set()
+
+    for uid in data:
+        # Generate a unique new name
+        while True:
+            num = random.randint(0, 99999)
+            name = f"#{num:05d}#"
+            if name not in used_names:
+                break
+        used_names.add(name)
+        new_data[uid] = {"name": name, "color": _generate_color()}
+
+    _save_identities(new_data)
+    log.info("Rotated %d identities.", len(new_data))
+    return len(new_data)
+
+
 # ── Webhook helpers ──────────────────────────────────────────────────
 
 async def get_or_create_webhook(channel: discord.TextChannel) -> discord.Webhook:
@@ -135,7 +202,14 @@ class ChatModal(discord.ui.Modal, title="Facility Terminal"):
         identity = get_identity(interaction.user.id)
         name = identity["name"]
         color = identity["color"]
-        content = self.message.value
+        content = sanitize_message(self.message.value)
+
+        if not content:
+            await interaction.response.send_message(
+                "Message rejected — no valid content after filtering.",
+                ephemeral=True,
+            )
+            return
 
         try:
             webhook = await self.cog._get_webhook(interaction.channel)

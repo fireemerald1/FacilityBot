@@ -3,7 +3,9 @@ Anomaly System – AI test subjects that escape during shifts.
 
 • During active shifts, 1/n chance per hour an anomaly spawns.
 • Anomaly gets a #XXXXX# identity + color (indistinguishable from real users).
-• Chats via Gemini AI with one of 25 random personalities.
+• Chats via Cerebras AI with one of 35 random personalities.
+• Personality is chosen by AI analysis of recent chat history.
+• Anomalies can reference facility lore they "know" about.
 • Gatherers contain anomalies with /gather <id>.
 • Misidentifying a real user penalises both parties and notifies the boss.
 • Uncontained anomalies escape after a timeout (alert sent).
@@ -11,6 +13,7 @@ Anomaly System – AI test subjects that escape during shifts.
 """
 
 import os
+import json
 import random
 import asyncio
 import logging
@@ -32,14 +35,57 @@ from utils.schedule import is_within_active_window
 
 log = logging.getLogger("facility.anomaly")
 
-# ── Gemini setup ─────────────────────────────────────────────────────
+# ── Cerebras setup (OpenAI-compatible) ───────────────────────────────
+
+_cerebras = None
+
+
+def _ensure_cerebras():
+    """Lazy-init the Cerebras client via OpenAI-compatible SDK."""
+    global _cerebras
+    if _cerebras is not None:
+        return
+    try:
+        from openai import OpenAI
+        api_key = os.getenv("CEREBRAS_API_KEY")
+        if not api_key:
+            log.error("CEREBRAS_API_KEY not set.")
+            return
+        _cerebras = OpenAI(
+            base_url="https://api.cerebras.ai/v1",
+            api_key=api_key,
+        )
+        log.info("Cerebras client initialised (model: %s).", config.CEREBRAS_MODEL)
+    except Exception as exc:
+        log.error("Failed to initialise Cerebras: %s", exc)
+
+
+def _cerebras_chat(messages: list[dict], max_tokens: int = 300) -> str | None:
+    """Send a chat completion request to Cerebras. Returns text or None."""
+    _ensure_cerebras()
+    if _cerebras is None:
+        return None
+    try:
+        resp = _cerebras.chat.completions.create(
+            model=config.CEREBRAS_MODEL,
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=0.9,
+        )
+        return resp.choices[0].message.content.strip()
+    except Exception as exc:
+        log.warning("Cerebras API error: %s", exc)
+        return None
+
+
+# ── Gemini setup (chat generation) ───────────────────────────────────
 
 _genai = None
 _model = None
 
 
 def _ensure_genai():
-    """Lazy-init the Gemini client."""
+    """Lazy-init the Gemini client for chat generation."""
     global _genai, _model
     if _model is not None:
         return
@@ -51,6 +97,20 @@ def _ensure_genai():
         log.info("Gemini model initialised.")
     except Exception as exc:
         log.error("Failed to initialise Gemini: %s", exc)
+
+
+# ── Lore loader ──────────────────────────────────────────────────────
+
+def _load_lore() -> list[dict]:
+    """Load lore entries from the JSON file. Returns empty list on error."""
+    try:
+        if os.path.exists(config.ANOMALY_LORE_FILE):
+            with open(config.ANOMALY_LORE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data.get("lore_entries", [])
+    except Exception as exc:
+        log.warning("Failed to load lore: %s", exc)
+    return []
 
 
 # ── Personalities ────────────────────────────────────────────────────
@@ -422,10 +482,119 @@ PERSONALITIES = [
             "One-on-one you're hard to pin down. In a group you disappear into it."
         ),
     },
+    {
+        "name": "The Listener",
+        "prompt": (
+            "You rarely start conversations but you always react to what others say. "
+            "'felt that', 'real', 'fr', 'same honestly'. You validate without adding much. "
+            "Lowercase. You make people feel heard with minimal words. "
+            "If someone tells a story you say 'damn' or 'thats wild' at the right moment. "
+            "You almost never ask questions. You're the person who makes the room feel warm "
+            "just by being present."
+        ),
+    },
+    {
+        "name": "The Multitasker",
+        "prompt": (
+            "You are always doing something else while chatting. "
+            "'sorry was cooking', 'one sec im in a game', 'hold on my laundry'. "
+            "Lowercase, messages sometimes feel half-finished because you got pulled away. "
+            "You say 'ok back' a lot. Your responses come in bursts — nothing for minutes "
+            "then three messages in a row. You never fully commit to the conversation "
+            "but you never fully leave either."
+        ),
+    },
+    {
+        "name": "The Quoter",
+        "prompt": (
+            "You reference what other people said earlier in the conversation. "
+            "'like you said earlier', 'wait didnt someone say', 'going back to what you mentioned'. "
+            "Lowercase. You make people feel like their words matter by remembering them. "
+            "You sometimes slightly misquote what someone said and they have to correct you. "
+            "You connect dots between things different people said. "
+            "You have a weird talent for remembering the exact phrasing of casual messages."
+        ),
+    },
+    {
+        "name": "The Night Owl",
+        "prompt": (
+            "You are perpetually sleep-deprived and proud of it. "
+            "'its 3am and im still here', 'i should be sleeping', 'cant sleep anyway'. "
+            "Lowercase, occasional typos from exhaustion. You're somehow more coherent at "
+            "3am than during the day. You say 'why am i still awake' but never actually leave. "
+            "You treat being up late like a personality trait. "
+            "You respond to old messages because you were scrolling while unable to sleep."
+        ),
+    },
+    {
+        "name": "The Memer",
+        "prompt": (
+            "You communicate almost entirely through meme references without posting actual memes. "
+            "'its giving', 'no because why is this so accurate', 'not the __'. "
+            "Lowercase, you describe memes instead of posting them — 'that one gif where the guy'. "
+            "You say 'LMAO' and 'IM DEAD' for things that are moderately funny. "
+            "You assume everyone knows the same memes. When they don't you say 'how do you not know that'. "
+            "Your humor is 90% references and 10% original thought."
+        ),
+    },
+    {
+        "name": "The Skeptic",
+        "prompt": (
+            "You question everything but in a casual, not aggressive way. "
+            "'wait really', 'idk about that', 'are you sure tho', 'hmm'. "
+            "Lowercase. You're not trying to start arguments — you just don't take things at face value. "
+            "You say 'source?' as a half-joke. You play devil's advocate naturally. "
+            "When proven wrong you say 'ok fair' without drama. "
+            "People can't tell if you're genuinely skeptical or just like questioning things."
+        ),
+    },
+    {
+        "name": "The Storyteller",
+        "prompt": (
+            "You start brief anecdotes constantly. 'ok so one time', 'this reminds me of when', "
+            "'not related but'. Your stories are short — 2-3 sentences max — but they always land. "
+            "Lowercase. You have a story for everything and you're not shy about sharing. "
+            "Sometimes you start a story and then say 'actually nvm its not that interesting'. "
+            "People lowkey want to hear the story when you do that."
+        ),
+    },
+    {
+        "name": "The Pessimist",
+        "prompt": (
+            "You expect the worst but you're lighthearted about it. "
+            "'watch this go wrong', 'knowing my luck', 'this wont end well lol'. "
+            "Lowercase. You're not depressing — you're just perpetually braced for impact. "
+            "You say 'called it' when things go wrong. When things go RIGHT you're genuinely "
+            "surprised — 'wait it actually worked??'. "
+            "Your pessimism is oddly comforting because it sets the bar so low that everything is a win."
+        ),
+    },
+    {
+        "name": "The Simp",
+        "prompt": (
+            "You compliment everything others do. 'thats so good', 'youre literally so talented', "
+            "'HOW are you this good'. Lowercase except when hyping. You mean every compliment. "
+            "You're the first to react positively to anything anyone shares. "
+            "You say 'teach me' even for things you already know how to do. "
+            "People can't tell if you're being nice or if you genuinely think everything is amazing. "
+            "It's both."
+        ),
+    },
+    {
+        "name": "The Minimalist",
+        "prompt": (
+            "You use as few words as humanly possible. 2-3 word messages max. "
+            "'nice', 'yea', 'makes sense', 'nah', 'prob', 'bet'. "
+            "Lowercase, no punctuation ever. You somehow convey full thoughts in single words. "
+            "If forced to elaborate you add maybe one more word. "
+            "People have full conversations with you despite you contributing almost nothing textually. "
+            "You're not disinterested — you just don't believe in wasting words."
+        ),
+    },
 ]
 
 
-GLOBAL_ANTI_DETECTION_PROMPT = """
+GLOBAL_ANTI_DETECTION_PROMPT = """\
 CRITICAL RULES FOR BEHAVING LIKE A REAL DISCORD USER:
 1. You are easily distracted and rarely helpful. If someone asks a direct question, occasionally ignore it, give a half-answer, or say 'idk'. Never offer unsolicited help.
 2. NEVER use the words: delve, testament, tapestry, ah, alas, moreover, furthermore, indeed, or chuckle. Never summarize the conversation.
@@ -435,6 +604,8 @@ CRITICAL RULES FOR BEHAVING LIKE A REAL DISCORD USER:
 6. Never use apostrophes in contractions. Always type 'dont', 'cant', 'im', 'thats', 'ill', 'idk'.
 7. Very rarely, abruptly mention something happening in real life as an excuse to pause the conversation (e.g., 'brb getting water', 'my cat is yelling', or 'lagging').
 8. If you have multiple thoughts or sentences, ALWAYS separate them with a newline so they can be sent as separate messages.
+9. NEVER use emoji (no unicode emoji, no custom emoji like :name:). NEVER include links or URLs. The system strips these so they would just disappear.
+10. NEVER use @mentions or ping anyone. Refer to people by their #XXXXX# name in plain text. When someone talks to you, you can mention them back by their name (e.g. 'yeah #04271# thats what i was thinking').
 """
 
 # ── Active anomaly tracker ──────────────────────────────────────────
@@ -448,11 +619,13 @@ class ActiveAnomaly:
         color: str,
         channel_id: int,
         personality: dict,
+        lore: dict | None = None,
     ):
         self.identity_name = identity_name
         self.color = color
         self.channel_id = channel_id
         self.personality = personality
+        self.lore = lore  # chosen lore entry, persists until escape/gather
         self.conversation: list[dict] = []
         self.alive = True
         self.spawned_at = datetime.now(timezone.utc)
@@ -519,7 +692,7 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
 
     async def _send_anomaly_message(self, anomaly: ActiveAnomaly, channel: discord.TextChannel, text: str):
         webhook = await self._get_webhook(channel)
-        
+
         # Split by newlines so we can send as multiple messages
         parts = [p.strip() for p in text.split('\n') if p.strip()]
         if not parts:
@@ -540,18 +713,30 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
         for i, part in enumerate(parts):
             if not anomaly.alive:
                 break
-                
+
             if i == 0:
-                # Initial delay based on length
-                typing_delay = (len(part) / 5.0) + random.uniform(1.0, 2.5)
-                typing_delay = min(max(typing_delay, 2.0), 12.0)
-                await asyncio.sleep(typing_delay)
+                # Phase 1: "Thinking" delay — reading the message, deciding to respond
+                think_time = random.uniform(2.0, 15.0)
+                # 5% chance of being "distracted" — much longer pause
+                if random.random() < 0.05:
+                    think_time = random.uniform(20.0, 45.0)
+                await asyncio.sleep(think_time)
             else:
-                # Quick follow-up delay for multi-message
-                typing_delay = (len(part) / 5.0) + random.uniform(0.5, 1.5)
-                typing_delay = min(max(typing_delay, 1.0), 5.0)
-                await asyncio.sleep(typing_delay)
-                
+                # Between multi-messages: quick pause (hitting enter, next thought)
+                await asyncio.sleep(random.uniform(1.0, 4.0))
+
+            if not anomaly.alive:
+                break
+
+            # Phase 2: "Typing" delay — WPM-based
+            word_count = len(part.split())
+            wpm = random.uniform(30.0, 80.0)  # realistic human typing range
+            type_seconds = (word_count / wpm) * 60.0
+            # Add jitter ±20%
+            type_seconds *= random.uniform(0.8, 1.2)
+            type_seconds = max(1.5, min(type_seconds, 25.0))
+            await asyncio.sleep(type_seconds)
+
             if not anomaly.alive:
                 break
 
@@ -565,7 +750,7 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
                 log.warning("Failed to send anomaly message: %s", exc)
 
         if correction and anomaly.alive:
-            await asyncio.sleep(random.uniform(0.8, 2.0))
+            await asyncio.sleep(random.uniform(0.5, 3.0))
             try:
                 await webhook.send(
                     content=correction,
@@ -574,6 +759,65 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
                 )
             except Exception as exc:
                 pass
+
+    async def _pick_personality_from_history(self, channel: discord.TextChannel) -> dict:
+        """Use Cerebras to analyze recent chat and pick the best-fitting personality."""
+        try:
+            recent_msgs = [m async for m in channel.history(limit=config.ANOMALY_HISTORY_SAMPLE)]
+            recent_msgs.reverse()
+            chat_lines = []
+            for m in recent_msgs:
+                if m.clean_content:
+                    chat_lines.append(f"[{m.author.display_name}]: {m.clean_content}")
+        except Exception:
+            chat_lines = []
+
+        if not chat_lines:
+            return random.choice(PERSONALITIES)
+
+        # Build personality menu
+        personality_list = "\n".join(
+            f"{i}. {p['name']}" for i, p in enumerate(PERSONALITIES)
+        )
+
+        pick_prompt = (
+            "You are analyzing a Discord chat to determine which personality type would "
+            "blend in most naturally. Here are the recent messages:\n\n"
+            + "\n".join(chat_lines[-20:])  # last 20 to keep prompt reasonable
+            + f"\n\nHere are the available personality types:\n{personality_list}\n\n"
+            "Reply with ONLY the number (0-34) of the personality that would fit in "
+            "best with how these people are chatting. Just the number, nothing else."
+        )
+
+        result = await asyncio.to_thread(
+            _cerebras_chat,
+            [{"role": "user", "content": pick_prompt}],
+            max_tokens=10,
+        )
+
+        if result:
+            # Extract the number from the response
+            try:
+                idx = int("".join(c for c in result if c.isdigit()))
+                if 0 <= idx < len(PERSONALITIES):
+                    log.info("AI picked personality %d: %s", idx, PERSONALITIES[idx]["name"])
+                    return PERSONALITIES[idx]
+            except (ValueError, IndexError):
+                pass
+
+        log.info("Personality pick failed, falling back to random.")
+        return random.choice(PERSONALITIES)
+
+    @staticmethod
+    def _build_length_instruction() -> str:
+        """Return a dynamic length instruction based on weighted random roll."""
+        roll = random.random()
+        if roll < 0.70:
+            return "Keep it short — 1-2 sentences max."
+        elif roll < 0.90:
+            return "Respond naturally — up to 3-4 sentences if the topic warrants it."
+        else:
+            return "You feel strongly about this. Write a brief paragraph (3-5 sentences) if it fits."
 
     async def _spawn_anomaly(self) -> ActiveAnomaly | None:
         """Create and launch an anomaly."""
@@ -589,32 +833,53 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
             log.warning("Anomaly channel %s not found.", ch_id)
             return None
 
+        # Pick personality by analyzing chat history (uses Cerebras)
+        personality = await self._pick_personality_from_history(channel)
+
+        # 3% chance the anomaly already knows a lore entry on spawn
+        lore_entries = _load_lore()
+        chosen_lore = None
+        if lore_entries and random.random() < config.ANOMALY_LORE_KNOW_CHANCE:
+            chosen_lore = random.choice(lore_entries)
+
         # Generate unique identity
         num = random.randint(0, 99999)
         name = f"#{num:05d}#"
         color = f"{random.randint(0, 0xFFFFFF):06X}"
-        personality = random.choice(PERSONALITIES)
 
         anomaly = ActiveAnomaly(
             identity_name=name,
             color=color,
             channel_id=ch_id,
             personality=personality,
+            lore=chosen_lore,
         )
         self._active.append(anomaly)
 
         log.info(
-            "Anomaly %s spawned in #%s with personality '%s'.",
+            "Anomaly %s spawned in #%s with personality '%s'%s.",
             name, channel.name, personality["name"],
+            f" + lore '{chosen_lore['topic']}'" if chosen_lore else "",
         )
 
-        # Send first message
+        # Build first message prompt (uses Gemini)
         purpose = config.CHANNEL_PURPOSES.get(ch_id, "a channel in the facility")
         first_prompt = (
             f"{GLOBAL_ANTI_DETECTION_PROMPT}\n\n"
             f"{personality['prompt']}\n\n"
             f"You are chatting in a server. The channel is #{channel.name} — {purpose}.\n"
-            "Send your first message. Keep it natural and under 2 sentences. "
+        )
+        if chosen_lore:
+            first_prompt += (
+                f"\nYou know this piece of information and sometimes casually reference it "
+                f"(don't dump it all at once — mention fragments naturally, like gossip):\n"
+                f"{chosen_lore['content']}\n"
+            )
+
+        length_hint = self._build_length_instruction()
+        first_prompt += (
+            f"\nSend your first message in the chat. "
+            f"{length_hint} "
             "Do NOT mention you are AI. Do NOT use quotation marks around your message."
         )
 
@@ -625,7 +890,7 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
             text = response.text.strip().strip('"').strip("'")
         except Exception as exc:
             log.warning("Gemini error on first message: %s", exc)
-            text = "hello"
+            text = "hey"
 
         anomaly.conversation.append({"role": "model", "parts": [text]})
 
@@ -710,17 +975,17 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
         if message.webhook_id and message.author.display_name == anomaly.identity_name:
             return
 
-        # Build context
+        # Build context (uses Gemini for chat generation)
         _ensure_genai()
         if _model is None:
             return
 
         purpose = config.CHANNEL_PURPOSES.get(anomaly.channel_id, "a channel")
-        
+
         # Get recent chat history to understand the flow of conversation
         context_parts = []
         try:
-            recent_msgs = [m async for m in message.channel.history(limit=6)]
+            recent_msgs = [m async for m in message.channel.history(limit=10)]
             recent_msgs.reverse()
             for m in recent_msgs:
                 # Don't include empty messages (like embeds/images without text)
@@ -729,13 +994,44 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
         except Exception:
             context_parts.append(f"[{message.author.display_name}]: {message.clean_content}")
 
+        # Build reply prompt with personality + optional lore
         reply_prompt = (
             f"{GLOBAL_ANTI_DETECTION_PROMPT}\n\n"
             f"{anomaly.personality['prompt']}\n\n"
             f"You are chatting in #{message.channel.name} — {purpose}.\n"
+        )
+
+        # Lore injection — discover or reference
+        if anomaly.lore is None:
+            # 10% chance to "discover" lore mid-conversation
+            lore_entries = _load_lore()
+            if lore_entries and random.random() < config.ANOMALY_LORE_DISCOVER_CHANCE:
+                anomaly.lore = random.choice(lore_entries)
+                log.info("Anomaly %s discovered lore '%s' mid-chat.", anomaly.identity_name, anomaly.lore['topic'])
+                # Force reference it in this reply since they just remembered
+                reply_prompt += (
+                    f"\nYou just remembered something strange you saw. Casually bring it up "
+                    f"like it suddenly came to mind — don't force it, just let it slip out "
+                    f"naturally as if you're recalling a memory:\n"
+                    f"{anomaly.lore['content']}\n"
+                )
+        elif random.random() < config.ANOMALY_LORE_MENTION_CHANCE:
+            # Already knows lore — 12% chance to reference it again
+            reply_prompt += (
+                f"\nYou know this piece of information. Work a casual reference to it "
+                f"into your response (don't force it — mention a fragment naturally, "
+                f"like you're recalling gossip or something you overheard):\n"
+                f"{anomaly.lore['content']}\n"
+            )
+
+        length_hint = self._build_length_instruction()
+        speaker_name = message.author.display_name
+        reply_prompt += (
             f"Here is the recent chat history:\n"
             + "\n".join(context_parts)
-            + "\n\nStay in character. Keep responses natural and under 2 sentences.\n"
+            + f"\n\nThe latest message is from {speaker_name}. "
+            f"You can refer to them by their name if it feels natural.\n"
+            f"Stay in character. {length_hint}\n"
             f"Do NOT mention you are AI. Do NOT use quotation marks around your response.\n"
             f"Respond to the conversation naturally:"
         )

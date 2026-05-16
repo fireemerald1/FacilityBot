@@ -67,6 +67,28 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
             save_schedule_state(state)
             log.info("New week (%s -> %s). Disabled old buttons.", last_week, current_week)
 
+        # ── Monday identity rotation ──────────────────────────────────
+        if today_weekday == 0:  # Monday
+            last_rotation_week = state.get("last_rotation_week")
+            if last_rotation_week != current_week:
+                from cogs.chat import rotate_all_identities
+                count = rotate_all_identities()
+                state["last_rotation_week"] = current_week
+                save_schedule_state(state)
+                log.info("Monday rotation: %d identities reassigned.", count)
+
+                # Announce in alert channel
+                alert_ch = self.bot.get_channel(config.CHANNEL_ALERT)
+                if alert_ch and count > 0:
+                    try:
+                        await alert_ch.send(
+                            "🔄 **Identity reassignment complete.** "
+                            "All facility IDs have been rotated. "
+                            "Check your new designation with `/c`."
+                        )
+                    except Exception:
+                        pass
+
         if not is_active_day:
             # Reset flags for next active day
             self._start_sent = False
