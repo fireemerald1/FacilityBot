@@ -44,8 +44,6 @@ _RE_UNICODE_EMOJI = re.compile(
     "\U00002600-\U000026FF"  # misc symbols
     "\U0000FE00-\U0000FE0F"  # variation selectors
     "\U0000200D"             # zero-width joiner
-    "\U00000023\U000020E3"   # keycap #
-    "\U0000002A\U000020E3"   # keycap *
     "]+",
     flags=re.UNICODE,
 )
