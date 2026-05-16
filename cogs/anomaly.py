@@ -980,6 +980,11 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
         if message.webhook_id and message.author.display_name == anomaly.identity_name:
             return
 
+        log.info(
+            "%s triggered by %s with: %s",
+            anomaly.identity_name, message.author.display_name, message.clean_content,
+        )
+
         # Build context (uses Gemini for chat generation)
         _ensure_genai()
         if _model is None:
