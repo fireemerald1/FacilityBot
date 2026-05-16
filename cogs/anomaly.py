@@ -941,10 +941,15 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
         for a in self._active:
             if not a.alive:
                 continue
+            # Check if the message mentions this anomaly (with or without #)
+            mentioned = (
+                a.identity_name in message.content
+                or a.id_number in message.content
+            )
             # Same channel — check if we should respond
             if a.channel_id == message.channel.id:
                 # Always respond if mentioned directly
-                if a.identity_name in message.content:
+                if mentioned:
                     anomaly = a
                     break
                 # Always respond if replied to
@@ -964,7 +969,7 @@ class AnomalyCog(commands.Cog, name="Anomaly"):
                     break
 
             # Name mentioned in any channel — respond there
-            elif a.identity_name in message.content:
+            elif mentioned:
                 anomaly = a
                 break
 
