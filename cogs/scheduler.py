@@ -149,7 +149,7 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
 
     async def _lock_channels(self) -> None:
         """Remove send_messages for @everyone in general-staff and media."""
-        for ch_id in (config.CHANNEL_GENERAL_STAFF, config.CHANNEL_MEDIA):
+        for ch_id in (config.CHANNEL_GENERAL_STAFF, config.CHANNEL_GENERAL_STAFF_2):
             channel = self.bot.get_channel(ch_id)
             if channel is None:
                 continue
@@ -166,7 +166,7 @@ class SchedulerCog(commands.Cog, name="Scheduler"):
 
     async def _unlock_channels(self) -> None:
         """Restore send_messages for @everyone in general-staff and media."""
-        for ch_id in (config.CHANNEL_GENERAL_STAFF, config.CHANNEL_MEDIA):
+        for ch_id in (config.CHANNEL_GENERAL_STAFF, config.CHANNEL_GENERAL_STAFF_2):
             channel = self.bot.get_channel(ch_id)
             if channel is None:
                 continue

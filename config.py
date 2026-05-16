@@ -14,7 +14,7 @@ CHANNEL_GATHERER  = 1495426446230028449
 CHANNEL_ALERT     = 1495427216966680686
 CHANNEL_PROMOTION = 1495426979736977501
 CHANNEL_GENERAL_STAFF = 1495371969070104659
-CHANNEL_MEDIA         = 1495413696288264343
+CHANNEL_GENERAL_STAFF_2 = 1495413696288264343
 
 # ─── Constants ───────────────────────────────────────────────────────
 MAX_ACTIVE_EMBEDS   = 2          # Max concurrent active embeds per system
@@ -124,7 +124,7 @@ ANOMALY_CHANNELS = (
     CHANNEL_BUILDER,
     CHANNEL_GATHERER,
     CHANNEL_GENERAL_STAFF,
-    CHANNEL_MEDIA,
+    CHANNEL_GENERAL_STAFF_2,
 )
 
 # ─── Channel Purposes (for Anomaly AI context) ──────────────────────
@@ -133,7 +133,7 @@ CHANNEL_PURPOSES = {
     CHANNEL_BUILDER: "where builders accept or reject generated codes",
     CHANNEL_GATHERER: "where gatherers collect remains of dead test subjects",
     CHANNEL_GENERAL_STAFF: "where facility staff socialize and discuss between shifts",
-    CHANNEL_MEDIA: "where staff share media, images, and off-topic content",
+    CHANNEL_GENERAL_STAFF_2: "a second general chat for off-topic conversations",
 }
 
 ANOMALY_CHANCE = 3             # 1/n chance per hour
